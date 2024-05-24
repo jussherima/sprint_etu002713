@@ -81,14 +81,19 @@ public class FrontServlet extends HttpServlet {
     
     // afficher l'url
     public void show_url_map(String url,PrintWriter out){
+        boolean url_existe = false;
         for(Map.Entry<String,Mapping> entry : this.mon_map.entrySet()){
             String valeur_url = "/framework_test/"+entry.getKey();
             if(valeur_url.equals(url)){
+                url_existe = true;
                 out.println("====================================================");
                 out.println("nom du class est ="+entry.getValue().getClassName());
-                out.println("nom du method ="+entry.getValue().getClassName());
+                out.println("nom du method ="+entry.getValue().getMethodName());
                 out.println("====================================================");
             }
+        }
+        if(!url_existe){
+            out.println("aucun method associer a cette url");
         }
     }
     
