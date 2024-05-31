@@ -55,6 +55,12 @@ public class FrontServlet extends HttpServlet {
         // flux de sortie vers le navigateur
         PrintWriter out = response.getWriter();
 
+        // prendre l'url clicker
+        String url = request.getRequestURI();
+        
+        // fonction qui affiche les fonction associer a l'url
+        show_url_map(url, out);
+        
         
         try{
             invoke_method(url, out);
