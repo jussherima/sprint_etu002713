@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.ModuleLayer.Controller;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -23,10 +24,22 @@ public class FrontServlet extends HttpServlet {
     List<String> liste_controller;
     HashMap<String,Mapping> mon_map;
 
+    @SuppressWarnings("unchecked")
     public void init(ServletConfig config) throws ServletException{
         super.init(config);
         liste_controller = new ArrayList<>();
         mon_map =new HashMap<>();
+
+        // maka ny fonction si class annoter rehetra
+        String context_Valeur  = getServletConfig().getInitParameter("controller");
+        List<Class<?>> liste_class = getClasses(context_Valeur);
+        for(@SuppressWarnings("rawtypes") Class clazz : liste_class ){
+            if(clazz.isAnnotationPresent(annotation.Controller.class)){
+                liste_controller.add(clazz.getName());
+                mon_map.putAll(getAnnoteMethods(clazz));
+            };
+        }        
+
     }
     
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
@@ -38,45 +51,22 @@ public class FrontServlet extends HttpServlet {
     }
 
     
-    @SuppressWarnings("unchecked")
     public void processRequest(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         // flux de sortie vers le navigateur
         PrintWriter out = response.getWriter();
-        out.println("bienvenu dans le controller");
-        out.println("voici votre url " + request.getRequestURI());
 
         // prendre l'url clicker
         String url = request.getRequestURI();
-        // si l'url est juste /framework_test/ afficher la liste des controllers
-        if (url.equals("/framework_test/")){
-            // prendre le package qui contient les controller
-            String context_Valeur  = getServletConfig().getInitParameter("controller");
-
-            // prendre la liste des class dans le package 
-            List<Class<?>> liste_class = getClasses(context_Valeur);
-
-            // verifier si la class est annoter et l'ajouter dans la liste des controllers
-            for(@SuppressWarnings("rawtypes") Class clazz : liste_class ){
-                if(clazz.isAnnotationPresent(annotation.Controller.class)){
-                    liste_controller.add(clazz.getName());
-                    mon_map.putAll(getAnnoteMethods(clazz));
-                }
-            }
-        }
-        // prendre la fonction associe a l'url
-        else{
-            String context_Valeur  = getServletConfig().getInitParameter("controller");
-            List<Class<?>> liste_class = getClasses(context_Valeur);
-            for(@SuppressWarnings("rawtypes") Class clazz : liste_class ){
-                if(clazz.isAnnotationPresent(annotation.Controller.class)){
-                    liste_controller.add(clazz.getName());
-                    mon_map.putAll(getAnnoteMethods(clazz));
-                };
-            }
-        }
         
         // fonction qui affiche les fonction associer a l'url
         show_url_map(url, out);
+        
+        
+        try{
+            invoke_method(url, out);
+        }catch(Exception e){
+            out.println("misy erreur le izy:"+e.getMessage());
+        }
     }   
     
     // afficher l'url
@@ -97,6 +87,29 @@ public class FrontServlet extends HttpServlet {
         }
     }
     
+    // proceder l'url lannotation
+    public void invoke_method(String url,PrintWriter out) throws Exception{
+        out.println("let's invoke method");
+        boolean url_existe = false;
+        for(Map.Entry<String,Mapping> entry : this.mon_map.entrySet()){
+            String valeur_url = "/framework_test/"+entry.getKey();
+            if(valeur_url.equals(url)){
+                url_existe = true;
+                // prendre la class avec son nom
+                Class<?> clazz = Class.forName(entry.getValue().getClassName());
+
+                Method m = clazz.getDeclaredMethod(entry.getValue().getMethodName(),null);
+                out.print("Voici le nom du method "+m.getName()+"\n");
+                String retour = (String)m.invoke(clazz.newInstance(),null);
+                out.println(retour);
+                break;
+            }
+        }
+        if(!url_existe){
+            out.println("aucun method associer a cette url");
+        }
+    }
+
     // prendere toute les class dans le package specifier
     public List<Class<?>> getClasses(String packageName) {
         List<Class<?>> classes = new ArrayList<>();
