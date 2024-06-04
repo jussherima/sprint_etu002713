@@ -40,7 +40,7 @@ public class FrontServlet extends HttpServlet {
                 liste_controller.add(clazz.getName());
                 mon_map.putAll(getAnnoteMethods(clazz));
             };
-        }        
+        }
 
     }
     
@@ -97,6 +97,7 @@ public class FrontServlet extends HttpServlet {
     }
     
     // proceder l'url lannotation
+    @SuppressWarnings
     private void invoke_method(String url,HttpServletRequest req,HttpServletResponse res) throws Exception{
         boolean url_existe = false;
 
@@ -110,6 +111,7 @@ public class FrontServlet extends HttpServlet {
 
                 Method m = clazz.getDeclaredMethod(entry.getValue().getMethodName(),null);
                 
+                @SuppressWarnings("deprecation")
                 Object retour = m.invoke(clazz.newInstance(),null);
                 
                 // dans le cas ou le retour de la method est une string
