@@ -1,9 +1,7 @@
-# Sprint 4:
-  ->fonctionnalite
-    -> creer une class ModelView    
-        ->HashMap<nom_objet,objet> pour stocker les donner envoyer vers le VIEW
-        ->String nom view
-    ->du cote du front servlet :
-        ->si la fonction de l'url retourne une ModelView on affiche le view 
-          ->on fait une dispatch vers le view et on envoyons les donners en meme temps
-        ->si l'url retourne une string on affiche la chaine de caractere retourner
+# sprint 5
+  *fonctionalite*
+    **mgerer exception anak'i 4**
+      1-raha ohatra ka tsy miexiste le donner precisena hoe misy an'le controller 
+      2-raha ohatra ka misy url mitovy ho an'ny fontion ankiroa samy hafa
+      3-raha ohatra ka misy url tsy miexiste
+      4-raha ohatra ka misy fonction mretourne zavatra ankoatran'ne string sy ny ModelView
