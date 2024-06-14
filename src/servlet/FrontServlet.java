@@ -4,12 +4,14 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import annotation.GET;
+import annotation.RequestBody;
 import exception.ControllerFolderNotFoundException;
 import exception.DuplicateUrlException;
 import exception.InvalideFunctionRetourException;
@@ -114,6 +116,7 @@ public class FrontServlet extends HttpServlet {
     }
 
     // proceder l'url lannotation
+    @SuppressWarnings("unused")
     private void invoke_method(String url, HttpServletRequest req, HttpServletResponse res)
             throws NoSuchUrlExcpetion, InvalideFunctionRetourException, Exception {
         boolean url_existe = false;
@@ -125,10 +128,11 @@ public class FrontServlet extends HttpServlet {
                 // prendre la class avec son nom
                 Class<?> clazz = Class.forName(entry.getValue().getClassName());
 
-                Method m = clazz.getDeclaredMethod(entry.getValue().getMethodName(), null);
+                Method m = clazz.getDeclaredMethod(entry.getValue().getMethodName(), entry.getValue().method_param());
 
                 @SuppressWarnings("deprecation")
-                Object retour = m.invoke(clazz.newInstance(), null);
+                Object retour = m.invoke(clazz.newInstance(),
+                        get_request_param(req, res, entry.getValue().liste_param()));
 
                 // dans le cas ou le retour de la method est une string
                 if (retour.getClass() == String.class) {
@@ -202,10 +206,31 @@ public class FrontServlet extends HttpServlet {
                 if (liste_annoted_method.containsKey(my_url)) {
                     throw new DuplicateUrlException("l'url " + my_url + " contient 2 fonction en meme temps ");
                 }
-                liste_annoted_method.put(my_url, new Mapping(my_class.getName(), m.getName()));
+                // prendre les nom des parametre avec leurs valeur type
+                HashMap<String, Class<?>> method_liste = new HashMap<>();
+                for (Parameter param : m.getParameters()) {
+                    try {
+                        method_liste.put(param.getAnnotation(RequestBody.class).name(), String.class);
+                    } catch (Exception e) {
+                        method_liste.put("name", String.class);
+                        // TODO: handle exception
+                    }
+                }
+                liste_annoted_method.put(my_url, new Mapping(my_class.getName(), m.getName(), method_liste));
             }
         }
         return liste_annoted_method;
+    }
+
+    // fonction pour prendre tous les valeurs dans la requette
+    public Object[] get_request_param(HttpServletRequest request, HttpServletResponse response,
+            List<String> liste_objet)
+            throws IOException {
+        Object[] objet = new Object[liste_objet.size()];
+        for (int i = 0; i < liste_objet.size(); i++) {
+            objet[i] = request.getParameter(liste_objet.get(i));
+        }
+        return objet;
     }
 
     /*
