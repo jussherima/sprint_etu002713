@@ -1,7 +1,7 @@
-# sprint 5
+# sprint 6
   *fonctionalite*
-    **mgerer exception anak'i 4**
-      1-raha ohatra ka tsy miexiste le donner precisena hoe misy an'le controller 
-      2-raha ohatra ka misy url mitovy ho an'ny fontion ankiroa samy hafa
-      3-raha ohatra ka misy url tsy miexiste
-      4-raha ohatra ka misy fonction mretourne zavatra ankoatran'ne string sy ny ModelView
+    **mandefa donner amin'ny page hafa**
+    1-mcreer fonction maka ny attribut rehetra an'ilay fonction efa mape 
+    2-maka ny donner eo amin'ny url manana an'ny nom an'le requette mappe
+    3-minvoke an'le fonction miaraka amin'ny ilay donner avy any amin'ny url
+      
