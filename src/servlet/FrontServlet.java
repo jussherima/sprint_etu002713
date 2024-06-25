@@ -3,8 +3,10 @@ package servlet;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -86,6 +88,7 @@ public class FrontServlet extends HttpServlet {
                 erreur(out, 3, e);
             } catch (Exception e) {
                 out.println("misy erreur le izy:" + e.getMessage());
+                e.printStackTrace(out);
             }
         } else {
             if (error instanceof ControllerFolderNotFoundException) {
@@ -93,25 +96,6 @@ public class FrontServlet extends HttpServlet {
             } else if (error instanceof DuplicateUrlException) {
                 erreur(out, 1);
             }
-        }
-    }
-
-    // afficher l'url
-    private void show_url_map(String url, HttpServletRequest request, HttpServletResponse response) throws IOException {
-        boolean url_existe = false;
-        PrintWriter out = response.getWriter();
-        for (Map.Entry<String, Mapping> entry : this.mon_map.entrySet()) {
-            String valeur_url = "/framework_test/" + entry.getKey();
-            if (valeur_url.equals(url)) {
-                url_existe = true;
-                out.println("====================================================");
-                out.println("nom du class est =" + entry.getValue().getClassName());
-                out.println("nom du method =" + entry.getValue().getMethodName());
-                out.println("====================================================");
-            }
-        }
-        if (!url_existe) {
-            out.println("aucun method associer a cette url");
         }
     }
 
@@ -127,12 +111,22 @@ public class FrontServlet extends HttpServlet {
                 url_existe = true;
                 // prendre la class avec son nom
                 Class<?> clazz = Class.forName(entry.getValue().getClassName());
-
-                Method m = clazz.getDeclaredMethod(entry.getValue().getMethodName(), entry.getValue().method_param());
+                Method m = null;
+                try {
+                    m = clazz.getDeclaredMethod(entry.getValue().getMethodName(),
+                            entry.getValue().method_param());
+                } catch (Exception e) {
+                    throw new Exception(
+                            "exception trouver sur la method invoke_method sur le get DeclaredMethod"
+                                    + "<br/>le nom de la class est " + clazz.getName()
+                                    + "<br/>le nom de la method est " + entry.getValue().getMethodName()
+                                    + "<br/>la longeur du parametre est " + entry.getValue().method_param().length
+                                    + entry.getValue().method_param()[0].getName());
+                }
 
                 @SuppressWarnings("deprecation")
                 Object retour = m.invoke(clazz.newInstance(),
-                        get_request_param(req, res, entry.getValue().liste_param()));
+                        get_request_param(req, res, entry.getValue().getArgument()));
 
                 // dans le cas ou le retour de la method est une string
                 if (retour.getClass() == String.class) {
@@ -208,12 +202,23 @@ public class FrontServlet extends HttpServlet {
                 }
                 // prendre les nom des parametre avec leurs valeur type
                 HashMap<String, Class<?>> method_liste = new HashMap<>();
+                // for (Class<?> param : m.getParameterTypes()) {
+                // try {
+                // method_liste.put(param.getAnnotation(RequestBody.class).name(),
+                // param);
+                // } catch (Exception e) {
+                // method_liste.put("nom", param);
+                // }
+                // }
+
+                Class<?>[] params = m.getParameterTypes();
+
                 for (Parameter param : m.getParameters()) {
                     try {
-                        method_liste.put(param.getAnnotation(RequestBody.class).name(), String.class);
+                        method_liste.put(param.getAnnotation(RequestBody.class).name(),
+                                param.getType());
                     } catch (Exception e) {
-                        method_liste.put("name", String.class);
-                        // TODO: handle exception
+                        method_liste.put("nom", String.class);
                     }
                 }
                 liste_annoted_method.put(my_url, new Mapping(my_class.getName(), m.getName(), method_liste));
@@ -224,11 +229,51 @@ public class FrontServlet extends HttpServlet {
 
     // fonction pour prendre tous les valeurs dans la requette
     public Object[] get_request_param(HttpServletRequest request, HttpServletResponse response,
-            List<String> liste_objet)
-            throws IOException {
+            HashMap<String, Class<?>> liste_objet)
+            throws IOException, NumberFormatException, IllegalArgumentException, IllegalAccessException, Exception {
         Object[] objet = new Object[liste_objet.size()];
-        for (int i = 0; i < liste_objet.size(); i++) {
-            objet[i] = request.getParameter(liste_objet.get(i));
+        int i = 0;
+        for (Map.Entry<String, Class<?>> entry : liste_objet.entrySet()) {
+            // initialiser les valeurs string
+            if (entry.getValue() == String.class) {
+                try {
+                    objet[i] = request.getParameter(entry.getKey());
+                } catch (Exception e) {
+                    objet[i] = "null";
+                }
+            }
+            // initialiser les objet
+            else {
+                Class<?> objet_param = entry.getValue();
+                try {
+                    objet[i] = initialize_from_param(request, response, objet_param);
+                } catch (Exception e) {
+                    response.getWriter().println("misy erreur le initialize from param");
+                    throw e;
+                }
+            }
+            i++;
+        }
+        return objet;
+
+    }
+
+    // initialiser un objet a partir des parametre
+    public Object initialize_from_param(HttpServletRequest req, HttpServletResponse res, Class<?> objet_param)
+            throws NumberFormatException, IllegalArgumentException, IllegalAccessException, InstantiationException,
+            IOException {
+        Field[] liste_field = objet_param.getDeclaredFields();
+        Object objet = objet_param.newInstance();
+
+        for (Field field : liste_field) {
+            field.setAccessible(true);
+            if (field.getType() == int.class) {
+                field.set(objet, Integer.parseInt(req.getParameter(field.getName())));
+            } else if (field.getType() == String.class) {
+                field.set(objet, req.getParameter(field.getName()));
+            } else {
+                throw new InvalidParameterException("le parametre inserer doit etre de type string ou int");
+            }
         }
         return objet;
     }
