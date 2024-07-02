@@ -24,14 +24,17 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import util.Mapping;
 import util.ModelView;
+import util.Session;
 
 // @WebServlet(urlPatterns = "/*", name = "monservlet")
 public class FrontServlet extends HttpServlet {
     List<String> liste_controller;
     HashMap<String, Mapping> mon_map;
     Exception error = null;
+    List<String> liste_nom = new ArrayList<>();
 
     // intialization du servlet
     @SuppressWarnings("unchecked")
@@ -57,6 +60,9 @@ public class FrontServlet extends HttpServlet {
                     mon_map.putAll(getAnnoteMethods(clazz));
                 } catch (DuplicateUrlException exc) {
                     error = exc;
+                } catch (Exception e) {
+
+                    error = e;
                 }
             }
         }
@@ -95,6 +101,8 @@ public class FrontServlet extends HttpServlet {
                 erreur(out, 2);
             } else if (error instanceof DuplicateUrlException) {
                 erreur(out, 1);
+            } else {
+                out.println(error.getMessage());
             }
         }
     }
@@ -108,6 +116,11 @@ public class FrontServlet extends HttpServlet {
         for (Map.Entry<String, Mapping> entry : this.mon_map.entrySet()) {
             String valeur_url = entry.getKey();
             if (valeur_url.equals(url)) {
+                // verfie si les parametres sont tous annoters
+                if (entry.getValue().getArgument().containsKey("error")) {
+                    throw new Exception("ETU 002713 ereur pas de annotation detecter");
+                }
+
                 url_existe = true;
                 // prendre la class avec son nom
                 Class<?> clazz = Class.forName(entry.getValue().getClassName());
@@ -125,7 +138,11 @@ public class FrontServlet extends HttpServlet {
                 }
 
                 @SuppressWarnings("deprecation")
-                Object retour = m.invoke(clazz.newInstance(),
+
+                // minstancer an'le session ao anaty objet
+                Object objet = clazz.newInstance();
+                initialize_session(objet, req);
+                Object retour = m.invoke(objet,
                         get_request_param(req, res, entry.getValue().getArgument()));
 
                 // dans le cas ou le retour de la method est une string
@@ -162,6 +179,10 @@ public class FrontServlet extends HttpServlet {
         dispatcher.forward(request, response);
     }
 
+    private void trait_session(HttpSession session) {
+
+    }
+
     // prendere toute les class dans le package specifier
     private List<Class<?>> getClasses(String packageName) throws ControllerFolderNotFoundException {
         List<Class<?>> classes = new ArrayList<>();
@@ -169,10 +190,10 @@ public class FrontServlet extends HttpServlet {
         File directory = null;
         try {
             directory = new File(Thread.currentThread().getContextClassLoader().getResource(packagePath).getFile());
-
         } catch (Exception e) {
             // TODO: handle exception
-            throw new ControllerFolderNotFoundException("le controlleur que vous avez specifier n'existe pas");
+            throw new ControllerFolderNotFoundException(
+                    "le controlleur que vous avez specifier n'existe pas " + packageName);
         }
 
         File[] files = directory.listFiles();
@@ -191,7 +212,7 @@ public class FrontServlet extends HttpServlet {
     }
 
     // prendre tou les mthod annoter dans cette class
-    private HashMap<String, Mapping> getAnnoteMethods(Class<?> my_class) throws DuplicateUrlException {
+    private HashMap<String, Mapping> getAnnoteMethods(Class<?> my_class) throws DuplicateUrlException, Exception {
         Method[] liste_method = my_class.getDeclaredMethods();
         HashMap<String, Mapping> liste_annoted_method = new HashMap<>();
         for (Method m : liste_method) {
@@ -202,23 +223,17 @@ public class FrontServlet extends HttpServlet {
                 }
                 // prendre les nom des parametre avec leurs valeur type
                 HashMap<String, Class<?>> method_liste = new HashMap<>();
-                // for (Class<?> param : m.getParameterTypes()) {
-                // try {
-                // method_liste.put(param.getAnnotation(RequestBody.class).name(),
-                // param);
-                // } catch (Exception e) {
-                // method_liste.put("nom", param);
-                // }
-                // }
 
                 Class<?>[] params = m.getParameterTypes();
 
                 for (Parameter param : m.getParameters()) {
+
                     try {
                         method_liste.put(param.getAnnotation(RequestBody.class).name(),
                                 param.getType());
                     } catch (Exception e) {
-                        method_liste.put("nom", String.class);
+                        method_liste.put("error", String.class);
+                        // throw new Exception("misy parametre tsy annoter");
                     }
                 }
                 liste_annoted_method.put(my_url, new Mapping(my_class.getName(), m.getName(), method_liste));
@@ -235,6 +250,7 @@ public class FrontServlet extends HttpServlet {
         int i = 0;
         for (Map.Entry<String, Class<?>> entry : liste_objet.entrySet()) {
             // initialiser les valeurs string
+
             if (entry.getValue() == String.class) {
                 try {
                     objet[i] = request.getParameter(entry.getKey());
@@ -283,6 +299,7 @@ public class FrontServlet extends HttpServlet {
      * fonction qui affiche les erreurs
      * 
      */
+
     private void erreur(PrintWriter out, int numero) {
         out.println("<h2>erreur " + numero + "</h1>");
         out.println("<a style=\"color:red\"  >" + error.getMessage() + "</a>");
@@ -295,6 +312,19 @@ public class FrontServlet extends HttpServlet {
         out.println("<a style=\"color:red\"  >" + error.getMessage() + "</a>");
         out.println("<a style=\"color:red\"  >");
         error.printStackTrace(out);
+    }
+
+    /*
+     * fonction qui initialize le session
+     */
+    private void initialize_session(Object objet, HttpServletRequest request) throws Exception {
+        Field[] att = objet.getClass().getDeclaredFields();
+        for (Field f : att) {
+            if (f.getType() == Session.class) {
+                f.setAccessible(true);
+                f.set(objet, new Session(request.getSession()));
+            }
+        }
     }
 
 }
