@@ -6,16 +6,18 @@ import java.io.PrintWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
-import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.google.gson.Gson;
+
 import annotation.GET;
 import annotation.RequestBody;
 import exception.ControllerFolderNotFoundException;
 import exception.DuplicateUrlException;
+import exception.InvalidParameterException;
 import exception.InvalideFunctionRetourException;
 import exception.NoSuchUrlExcpetion;
 import jakarta.servlet.RequestDispatcher;
@@ -90,9 +92,11 @@ public class FrontServlet extends HttpServlet {
                 invoke_method(path, request, response);
             } catch (NoSuchUrlExcpetion e) {
                 erreur(out, 2, e);
-            } catch (InvalideFunctionRetourException e) {
-                erreur(out, 3, e);
-            } catch (Exception e) {
+            }
+            // catch (InvalideFunctionRetourException e) {
+            // erreur(out, 3, e);
+            // }
+            catch (Exception e) {
                 out.println("misy erreur le izy:" + e.getMessage());
                 e.printStackTrace(out);
             }
@@ -125,6 +129,7 @@ public class FrontServlet extends HttpServlet {
                 // prendre la class avec son nom
                 Class<?> clazz = Class.forName(entry.getValue().getClassName());
                 Method m = null;
+
                 try {
                     m = clazz.getDeclaredMethod(entry.getValue().getMethodName(),
                             entry.getValue().method_param());
@@ -151,8 +156,13 @@ public class FrontServlet extends HttpServlet {
                 } else if (retour.getClass() == ModelView.class) {
                     res.getWriter().println("l'instance de la class est une view");
                     trait_view(req, res, (ModelView) retour);
-                } else {
-                    throw new InvalideFunctionRetourException("retour du fonction invalide");
+                }
+                // dans le
+                else {
+                    res.setContentType("application/json");
+                    Gson gson = new Gson();
+                    String retour_json = gson.toJson(retour);
+                    res.getWriter().println(retour_json);
                 }
                 break;
             }
@@ -277,7 +287,7 @@ public class FrontServlet extends HttpServlet {
     // initialiser un objet a partir des parametre
     public Object initialize_from_param(HttpServletRequest req, HttpServletResponse res, Class<?> objet_param)
             throws NumberFormatException, IllegalArgumentException, IllegalAccessException, InstantiationException,
-            IOException {
+            IOException, InvalidParameterException {
         Field[] liste_field = objet_param.getDeclaredFields();
         Object objet = objet_param.newInstance();
 

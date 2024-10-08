@@ -7,3 +7,14 @@
       
 # fonctionalite sprint 7 
   *mettre en argument d'une fonction une objet*
+
+
+# sprint 8 manisy session
+
+
+# sprint 9 :
+  *avedika json ny type de retourin'ny le fonction arakarakin'ny annotation .*i
+
+
+# sprint 10 
+  *mcreer verb amin'ny le izy ohatra hoe post sy get *
