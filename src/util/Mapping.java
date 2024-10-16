@@ -9,6 +9,7 @@ public class Mapping {
     String className;
     String methodName;
     HashMap<String, Class<?>> argument;
+    Class verb;
 
     /**
      * @param className
@@ -19,6 +20,19 @@ public class Mapping {
         this.className = className;
         this.methodName = methodName;
         this.argument = argument;
+    }
+
+    /**
+     * @param className
+     * @param methodName
+     * @param argument
+     * @param verb
+     */
+    public Mapping(String className, String methodName, HashMap<String, Class<?>> argument, Class verb) {
+        this.className = className;
+        this.methodName = methodName;
+        this.argument = argument;
+        this.verb = verb;
     }
 
     /**
@@ -83,6 +97,18 @@ public class Mapping {
         return retour;
     }
 
-    
+    /**
+     * @return the verb
+     */
+    public Class getVerb() {
+        return verb;
+    }
+
+    /**
+     * @param verb the verb to set
+     */
+    public void setVerb(Class verb) {
+        this.verb = verb;
+    }
 
 }
