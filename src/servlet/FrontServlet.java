@@ -41,6 +41,7 @@ public class FrontServlet extends HttpServlet {
     Exception error = null;
     List<String> liste_nom = new ArrayList<>();
     Class<?> method_appeler;
+    int status = 200;
 
     // intialization du servlet
     @SuppressWarnings("unchecked")
@@ -97,18 +98,24 @@ public class FrontServlet extends HttpServlet {
             String path = request.getRequestURI().split("/")[2];
             try {
                 invoke_method(path, request, response);
+                response.setStatus(200);
             } catch (NoSuchUrlExcpetion e) {
                 erreur(out, 2, e);
+                response.setStatus(404);
             } catch (Exception e) {
+                response.setStatus(500);
                 out.println("misy erreur le izy:" + e.getMessage());
                 e.printStackTrace(out);
             }
         } else {
             if (error instanceof ControllerFolderNotFoundException) {
                 erreur(out, 2);
+                response.setStatus(500);
             } else if (error instanceof DuplicateUrlException) {
+                response.setStatus(500);
                 erreur(out, 1);
             } else {
+                response.setStatus(500);
                 out.println(error.getMessage());
             }
         }
@@ -382,6 +389,10 @@ public class FrontServlet extends HttpServlet {
         out.println("<a style=\"color:red\"  >" + error.getMessage() + "</a>");
         out.println("<a style=\"color:red\"  >");
         error.printStackTrace(out);
+    }
+
+    private void status_404() {
+
     }
 
     /*
