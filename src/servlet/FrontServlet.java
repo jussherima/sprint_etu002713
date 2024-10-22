@@ -97,6 +97,7 @@ public class FrontServlet extends HttpServlet {
         if (error == null) {
             String path = request.getRequestURI().split("/")[2];
             try {
+                response.setStatus(status);
                 invoke_method(path, request, response);
                 response.setStatus(200);
             } catch (NoSuchUrlExcpetion e) {
