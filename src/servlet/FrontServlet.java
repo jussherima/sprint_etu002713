@@ -2,6 +2,7 @@ package servlet;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
@@ -26,14 +27,18 @@ import exception.NoSuchUrlExcpetion;
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletConfig;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import jakarta.servlet.http.Part;
+import util.FilePart;
 import util.Mapping;
 import util.ModelView;
 import util.Session;
 
+@MultipartConfig(fileSizeThreshold = 1024 * 1024, maxFileSize = 1024 * 1024 * 10, maxRequestSize = 1024 * 1024 * 20)
 // @WebServlet(urlPatterns = "/*", name = "monservlet")
 public class FrontServlet extends HttpServlet {
     List<String> liste_controller;
@@ -334,6 +339,36 @@ public class FrontServlet extends HttpServlet {
                     objet[i] = request.getParameter(entry.getKey());
                 } catch (Exception e) {
                     objet[i] = "null";
+                }
+            } else if (entry.getValue() == int.class) {
+                try {
+                    objet[i] = Integer.parseInt(request.getParameter(entry.getKey()));
+                } catch (Exception e) {
+                    objet[i] = "null";
+                }
+            } else if (entry.getValue() == double.class) {
+                try {
+                    objet[i] = Double.parseDouble(request.getParameter(entry.getKey()));
+                } catch (Exception e) {
+                    objet[i] = "null";
+                }
+            } else if (entry.getValue() == FilePart.class) {
+                try {
+                    Part filepart = request.getPart(entry.getKey());
+                    String filename = filepart.getSubmittedFileName();
+                    InputStream reader = filepart.getInputStream();
+                    byte[] buffer = new byte[1024];
+                    int[] byte_read = new int[1024];
+                    int bytesread;
+                    int id = 0;
+                    while ((bytesread = reader.read(buffer)) != -1) {
+                        byte_read[id] = bytesread;
+                        id++;
+                    }
+                    FilePart fp = new FilePart(filename, byte_read);
+                    objet[i] = fp;
+                } catch (Exception e) {
+                    throw new Exception("erreur pendant l'upload du fichier " + e.getMessage());
                 }
             }
             // initialiser les objet

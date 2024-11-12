@@ -18,3 +18,11 @@
 
 # sprint 10 
   *mcreer verb amin'ny le izy ohatra hoe post sy get *
+
+
+# sprint 11
+ * generer une etat de la page par exemple etat : 404(not found ) , 200 (success),500 internal serveur error.
+
+
+# sprint12
+  * creer une fonctionnalite de import de fichier *
