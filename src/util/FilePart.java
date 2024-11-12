@@ -1,12 +1,15 @@
 package util;
 
+import java.io.File;
+import java.io.FileOutputStream;
+
 public class FilePart {
     String filename;
-    int[] byte_read;
+    byte[] bytes;
 
-    public FilePart(String filename, int[] byte_read) {
+    public FilePart(String filename, byte[] bytes) {
         this.filename = filename;
-        this.byte_read = byte_read;
+        this.bytes = bytes;
     }
 
     public FilePart() {
@@ -27,17 +30,25 @@ public class FilePart {
     }
 
     /**
-     * @return the byte_read
+     * @return the bytes
      */
-    public int[] getByte_read() {
-        return byte_read;
+    public byte[] getBytes() {
+        return bytes;
     }
 
     /**
-     * @param byte_read the byte_read to set
+     * @param bytes the bytes to set
      */
-    public void setByte_read(int[] byte_read) {
-        this.byte_read = byte_read;
+    public void setBytes(byte[] bytes) {
+        this.bytes = bytes;
+    }
+
+    public void saveTo(String path) {
+        try (FileOutputStream fos = new FileOutputStream(new File(path))) {
+            fos.write(bytes);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
 }

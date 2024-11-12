@@ -1,5 +1,6 @@
 package servlet;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -356,16 +357,19 @@ public class FrontServlet extends HttpServlet {
                 try {
                     Part filepart = request.getPart(entry.getKey());
                     String filename = filepart.getSubmittedFileName();
-                    InputStream reader = filepart.getInputStream();
-                    byte[] buffer = new byte[1024];
-                    int[] byte_read = new int[1024];
-                    int bytesread;
-                    int id = 0;
-                    while ((bytesread = reader.read(buffer)) != -1) {
-                        byte_read[id] = bytesread;
-                        id++;
+                    byte[] liste_byte;
+                    try (InputStream reader = filepart.getInputStream()) {
+                        try (ByteArrayOutputStream byteArray = new ByteArrayOutputStream()) {
+                            byte[] buffer = new byte[1024];
+                            int bytesread;
+                            while ((bytesread = reader.read(buffer)) != -1) {
+                                byteArray.write(buffer, 0, bytesread);
+                            }
+                            liste_byte = byteArray.toByteArray();
+                        }
+
                     }
-                    FilePart fp = new FilePart(filename, byte_read);
+                    FilePart fp = new FilePart(filename, liste_byte);
                     objet[i] = fp;
                 } catch (Exception e) {
                     throw new Exception("erreur pendant l'upload du fichier " + e.getMessage());
