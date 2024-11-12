@@ -2,6 +2,7 @@ package servlet;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
@@ -26,21 +27,26 @@ import exception.NoSuchUrlExcpetion;
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletConfig;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import jakarta.servlet.http.Part;
+import util.FilePart;
 import util.Mapping;
 import util.ModelView;
 import util.Session;
 
+@MultipartConfig(fileSizeThreshold = 1024 * 1024, maxFileSize = 1024 * 1024 * 10, maxRequestSize = 1024 * 1024 * 20)
 // @WebServlet(urlPatterns = "/*", name = "monservlet")
 public class FrontServlet extends HttpServlet {
     List<String> liste_controller;
-    HashMap<String, Mapping> mon_map;
+    HashMap<String, Mapping[]> mon_map;
     Exception error = null;
     List<String> liste_nom = new ArrayList<>();
     Class<?> method_appeler;
+    int status = 200;
 
     // intialization du servlet
     @SuppressWarnings("unchecked")
@@ -96,19 +102,26 @@ public class FrontServlet extends HttpServlet {
         if (error == null) {
             String path = request.getRequestURI().split("/")[2];
             try {
+                response.setStatus(status);
                 invoke_method(path, request, response);
+                response.setStatus(200);
             } catch (NoSuchUrlExcpetion e) {
                 erreur(out, 2, e);
+                response.setStatus(404);
             } catch (Exception e) {
+                response.setStatus(500);
                 out.println("misy erreur le izy:" + e.getMessage());
                 e.printStackTrace(out);
             }
         } else {
             if (error instanceof ControllerFolderNotFoundException) {
                 erreur(out, 2);
+                response.setStatus(500);
             } else if (error instanceof DuplicateUrlException) {
+                response.setStatus(500);
                 erreur(out, 1);
             } else {
+                response.setStatus(500);
                 out.println(error.getMessage());
             }
         }
@@ -124,69 +137,71 @@ public class FrontServlet extends HttpServlet {
         boolean noerror = false;
 
         // boucler tous les controlleurs
-        for (Map.Entry<String, Mapping> entry : this.mon_map.entrySet()) {
+        for (Map.Entry<String, Mapping[]> entry : this.mon_map.entrySet()) {
             annotation_est_present += " | " + entry.getKey() + " | ";
             // prendre une valeur du <l'url,mapping associe>
             String valeur_url = entry.getKey();
             // verifie si c'est l'url que l'on cherche
             if (valeur_url.equals(url)) {
-                // verfie si les parametres sont tous annoters
-                if (entry.getValue().getArgument().containsKey("error")) {
-                    throw new Exception("ETU 002713 erreur pas de annotation detecter");
-                }
-
-                url_existe = true;
-                // prendre la class avec son nom
-                Class<?> clazz = Class.forName(entry.getValue().getClassName());
-                Method m = null;
-
-                // prendre une instance de la method qui correspend a l'url
-                try {
-                    m = clazz.getDeclaredMethod(entry.getValue().getMethodName(),
-                            entry.getValue().method_param());
-                } catch (Exception e) {
-                    throw new Exception(
-                            "exception trouver sur la method invoke_method sur le get DeclaredMethod"
-                                    + "<br/>le nom de la class est " + clazz.getName()
-                                    + "<br/>le nom de la method est " + entry.getValue().getMethodName()
-                                    + "<br/>la longeur du parametre est " + entry.getValue().method_param().length
-                                    + entry.getValue().method_param()[0].getName());
-                }
-
-                @SuppressWarnings("deprecation")
-
-                // minstancer an'le session ao anaty objet
-                Object objet = clazz.newInstance();
-                initialize_session(objet, req);
-
-                // verifier si le method est bien annoter selon le verb(ex:post ou get) que l'on
-                // cherche
-                if (m.isAnnotationPresent((Class<? extends Annotation>) method_appeler)) {
-
-                    // invoquer l'objet et prendre sa valeur de retour
-                    Object retour = m.invoke(objet,
-                            get_request_param(req, res, entry.getValue().getArgument()));
-
-                    // dans le cas ou le retour de la method est une string
-                    if (retour.getClass() == String.class) {
-                        noerror = true;
-                        res.getWriter().println((String) retour);
+                for (Mapping mp : entry.getValue()) {
+                    // verfie si les parametres sont tous annoters
+                    if (mp.getArgument().containsKey("error")) {
+                        throw new Exception("ETU 002713 erreur pas de annotation detecter");
                     }
-                    // dans le cas ou notre retour est une ModelView
-                    else if (retour.getClass() == ModelView.class) {
-                        res.getWriter().println("l'instance de la class est une view");
-                        noerror = true;
-                        trait_view(req, res, (ModelView) retour);
+
+                    url_existe = true;
+                    // prendre la class avec son nom
+                    Class<?> clazz = Class.forName(mp.getClassName());
+                    Method m = null;
+
+                    // prendre une instance de la method qui correspend a l'url
+                    try {
+                        m = clazz.getDeclaredMethod(mp.getMethodName(),
+                                mp.method_param());
+                    } catch (Exception e) {
+                        throw new Exception(
+                                "exception trouver sur la method invoke_method sur le get DeclaredMethod"
+                                        + "<br/>le nom de la class est " + clazz.getName()
+                                        + "<br/>le nom de la method est " + mp.getMethodName()
+                                        + "<br/>la longeur du parametre est " + mp.method_param().length
+                                        + mp.method_param()[0].getName());
                     }
-                    // dans le cas ou on veut faire des rest api
-                    else {
-                        res.setContentType("application/json");
-                        Gson gson = new Gson();
-                        String retour_json = gson.toJson(retour);
-                        noerror = true;
-                        res.getWriter().println(retour_json);
+
+                    @SuppressWarnings("deprecation")
+
+                    // minstancer an'le session ao anaty objet
+                    Object objet = clazz.newInstance();
+                    initialize_session(objet, req);
+
+                    // verifier si le method est bien annoter selon le verb(ex:post ou get) que l'on
+                    // cherche
+                    if (m.isAnnotationPresent((Class<? extends Annotation>) method_appeler)) {
+
+                        // invoquer l'objet et prendre sa valeur de retour
+                        Object retour = m.invoke(objet,
+                                get_request_param(req, res, mp.getArgument()));
+
+                        // dans le cas ou le retour de la method est une string
+                        if (retour.getClass() == String.class) {
+                            noerror = true;
+                            res.getWriter().println((String) retour);
+                        }
+                        // dans le cas ou notre retour est une ModelView
+                        else if (retour.getClass() == ModelView.class) {
+                            res.getWriter().println("l'instance de la class est une view");
+                            noerror = true;
+                            trait_view(req, res, (ModelView) retour);
+                        }
+                        // dans le cas ou on veut faire des rest api
+                        else {
+                            res.setContentType("application/json");
+                            Gson gson = new Gson();
+                            String retour_json = gson.toJson(retour);
+                            noerror = true;
+                            res.getWriter().println(retour_json);
+                        }
+                        break;
                     }
-                    break;
                 }
             }
 
@@ -251,19 +266,26 @@ public class FrontServlet extends HttpServlet {
     }
 
     // prendre tou les mthod annoter dans cette class
-    private HashMap<String, Mapping> getAnnoteMethods(Class<?> my_class) throws DuplicateUrlException, Exception {
+    private HashMap<String, Mapping[]> getAnnoteMethods(Class<?> my_class) throws DuplicateUrlException, Exception {
         Method[] liste_method = my_class.getDeclaredMethods();
-        HashMap<String, Mapping> liste_annoted_method = new HashMap<>();
+        HashMap<String, Mapping[]> liste_annoted_method = new HashMap<>();
         for (Method m : liste_method) {
+
+            // verifier si la method est annoter
             if (m.isAnnotationPresent(URL.class)) {
                 String my_url = m.getAnnotation(URL.class).url();
+
+                // verifie si l'url est deja definie avec le meme verb
                 if (liste_annoted_method.containsKey(my_url)) {
-                    if (m.isAnnotationPresent(liste_annoted_method.get(my_url).getVerb())) {
-                        throw new DuplicateUrlException(
-                                "l'url " + my_url + " contient 2 fonction en meme temps avec verb = "
-                                        + liste_annoted_method.get(my_url).getVerb());
+                    for (Mapping mp : liste_annoted_method.get(my_url)) {
+                        if (m.isAnnotationPresent(mp.getVerb())) {
+                            throw new DuplicateUrlException(
+                                    "l'url " + my_url + " contient 2 fonction en meme temps avec verb = "
+                                            + mp.getVerb());
+                        }
                     }
                 }
+
                 // prendre les nom des parametre avec leurs valeur type
                 HashMap<String, Class<?>> method_liste = new HashMap<>();
 
@@ -285,8 +307,19 @@ public class FrontServlet extends HttpServlet {
                 if (!m.isAnnotationPresent(method_verb)) {
                     method_verb = Post.class;
                 }
-                liste_annoted_method.put(my_url,
-                        new Mapping(my_class.getName(), m.getName(), method_liste, method_verb));
+
+                // verifie si l'url existe deja
+                if (liste_annoted_method.containsKey(my_url)) {
+                    Mapping[] mapping = new Mapping[2];
+                    mapping[0] = liste_annoted_method.get(my_url)[0];
+                    mapping[1] = new Mapping(my_class.getName(), m.getName(), method_liste, method_verb);
+                    liste_annoted_method.put(my_url, mapping);
+                } else {
+                    Mapping[] mapping = new Mapping[1];
+                    mapping[0] = new Mapping(my_class.getName(), m.getName(), method_liste, method_verb);
+                    liste_annoted_method.put(my_url, mapping);
+
+                }
             }
         }
         return liste_annoted_method;
@@ -306,6 +339,36 @@ public class FrontServlet extends HttpServlet {
                     objet[i] = request.getParameter(entry.getKey());
                 } catch (Exception e) {
                     objet[i] = "null";
+                }
+            } else if (entry.getValue() == int.class) {
+                try {
+                    objet[i] = Integer.parseInt(request.getParameter(entry.getKey()));
+                } catch (Exception e) {
+                    objet[i] = "null";
+                }
+            } else if (entry.getValue() == double.class) {
+                try {
+                    objet[i] = Double.parseDouble(request.getParameter(entry.getKey()));
+                } catch (Exception e) {
+                    objet[i] = "null";
+                }
+            } else if (entry.getValue() == FilePart.class) {
+                try {
+                    Part filepart = request.getPart(entry.getKey());
+                    String filename = filepart.getSubmittedFileName();
+                    InputStream reader = filepart.getInputStream();
+                    byte[] buffer = new byte[1024];
+                    int[] byte_read = new int[1024];
+                    int bytesread;
+                    int id = 0;
+                    while ((bytesread = reader.read(buffer)) != -1) {
+                        byte_read[id] = bytesread;
+                        id++;
+                    }
+                    FilePart fp = new FilePart(filename, byte_read);
+                    objet[i] = fp;
+                } catch (Exception e) {
+                    throw new Exception("erreur pendant l'upload du fichier " + e.getMessage());
                 }
             }
             // initialiser les objet
@@ -362,6 +425,10 @@ public class FrontServlet extends HttpServlet {
         out.println("<a style=\"color:red\"  >" + error.getMessage() + "</a>");
         out.println("<a style=\"color:red\"  >");
         error.printStackTrace(out);
+    }
+
+    private void status_404() {
+
     }
 
     /*
