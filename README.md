@@ -26,3 +26,7 @@
 
 # sprint12
   * creer une fonctionnalite de import de fichier *
+
+
+# spring 13 
+  * creer une fonctionnalite de validation de formulaire* 
