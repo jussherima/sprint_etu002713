@@ -1,5 +1,7 @@
 package exception;
 
+import java.lang.reflect.Field;
+
 public class ParameterRequiredException extends Exception {
 
     String param_name;
@@ -8,7 +10,7 @@ public class ParameterRequiredException extends Exception {
         super(message);
     }
 
-    public ParameterRequiredException(String class_name, String message) {
-        super(message);
+    public ParameterRequiredException(Field[] liste_field) {
+
     }
 }

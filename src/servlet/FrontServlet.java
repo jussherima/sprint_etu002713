@@ -56,7 +56,7 @@ public class FrontServlet extends HttpServlet {
     public void init(ServletConfig config) throws ServletException {
         super.init(config);
         liste_controller = new ArrayList<>();
-        mon_map = new HashMap<>();
+        mon_map = new HashMap<>(); // contient tous les method avec leur controller
 
         // maka ny fonction si class annoter rehetra
         String context_Valeur = getServletConfig().getInitParameter("controller");
@@ -111,6 +111,21 @@ public class FrontServlet extends HttpServlet {
             } catch (NoSuchUrlExcpetion e) {
                 erreur(out, 2, e);
                 response.setStatus(404);
+            } catch (ParameterRequiredException e) {
+
+                response.setContentType("text/html");
+                out.println("<html>");
+                out.println("<head></head>");
+                out.println("<body>");
+                out.println("<script>");
+                // Field[] liste_field = e.getListe_field();
+                // for (Field f : liste_field) {
+                // out.println("localStorage.setItem('f.getName()',"+f.get()+")");
+                // }
+                out.println("history.back();</script>");
+                out.println("</body>");
+                out.println("</html>");
+
             } catch (Exception e) {
                 response.setStatus(500);
                 out.println("misy erreur le izy:" + e.getMessage());
@@ -402,18 +417,26 @@ public class FrontServlet extends HttpServlet {
     // initialiser un objet a partir des parametre
     public Object initialize_from_param(HttpServletRequest req, HttpServletResponse res, Class<?> objet_param)
             throws NumberFormatException, IllegalArgumentException, IllegalAccessException, InstantiationException,
-            IOException, InvalidParameterException, ParameterRequiredExceptionN {
+            IOException, InvalidParameterException, ParameterRequiredException, NoSuchFieldException,
+            SecurityException {
         Field[] liste_field = objet_param.getDeclaredFields();
         Object objet = objet_param.newInstance();
 
-        List<ParameterRequiredException> liste_erreur = new ArrayList<>();
+        // JFrame f = new JFrame();
+
+        boolean issetError = false;
 
         for (Field field : liste_field) {
             field.setAccessible(true);
             String param_value = req.getParameter(field.getName());
 
-            if (field.isAnnotationPresent(Required.class) && (param_value == null)) {
-                liste_erreur.add(new ParameterRequiredException("parameter"));
+            // JOptionPane.showMessageDialog(f, "field name = " + field.getName() + " et
+            // parm value " + param_value,
+            // "message", 1);
+
+            if (field.isAnnotationPresent(Required.class) && ((param_value == null) || param_value.isEmpty())) {
+                issetError = true;
+                // JOptionPane.showMessageDialog(f, "isset error", "message", 1);
             } else {
                 // initializer les parametre integer
                 if (field.getType() == int.class) {
@@ -425,7 +448,7 @@ public class FrontServlet extends HttpServlet {
                 }
                 // initializer les parametre string
                 else if (field.getType() == String.class) {
-                    field.set(objet, req.getParameter(param_value));
+                    field.set(objet, param_value);
                 } else {
                     throw new InvalidParameterException("le parametre inserer doit etre de type string ou int");
                 }
@@ -433,9 +456,12 @@ public class FrontServlet extends HttpServlet {
 
         }
 
-        if (liste_erreur.size() > 0) {
-            throw new ParameterRequiredException("error");
+        if (issetError) {
+            throw new ParameterRequiredException(liste_field);
         }
+
+        // String nom = (String) objet.getClass().getDeclaredField("nom").get(objet);
+        // JOptionPane.showMessageDialog(f, "param value =" + nom, "message", 1);
 
         return objet;
     }
