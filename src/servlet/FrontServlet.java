@@ -19,12 +19,14 @@ import com.google.gson.Gson;
 import annotation.Get;
 import annotation.Post;
 import annotation.RequestBody;
+import annotation.Required;
 import annotation.URL;
 import exception.ControllerFolderNotFoundException;
 import exception.DuplicateUrlException;
 import exception.InvalidParameterException;
 import exception.InvalideFunctionRetourException;
 import exception.NoSuchUrlExcpetion;
+import exception.ParameterRequiredException;
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletConfig;
 import jakarta.servlet.ServletException;
@@ -341,19 +343,25 @@ public class FrontServlet extends HttpServlet {
                 } catch (Exception e) {
                     objet[i] = "null";
                 }
-            } else if (entry.getValue() == int.class) {
+            }
+            // initaliser la valeur integer du parametre
+            else if (entry.getValue() == int.class) {
                 try {
                     objet[i] = Integer.parseInt(request.getParameter(entry.getKey()));
                 } catch (Exception e) {
                     objet[i] = "null";
                 }
-            } else if (entry.getValue() == double.class) {
+            }
+            // initialiser la valeur double
+            else if (entry.getValue() == double.class) {
                 try {
                     objet[i] = Double.parseDouble(request.getParameter(entry.getKey()));
                 } catch (Exception e) {
                     objet[i] = "null";
                 }
-            } else if (entry.getValue() == FilePart.class) {
+            }
+            // intitialiser une valeur filepart
+            else if (entry.getValue() == FilePart.class) {
                 try {
                     Part filepart = request.getPart(entry.getKey());
                     String filename = filepart.getSubmittedFileName();
@@ -394,20 +402,41 @@ public class FrontServlet extends HttpServlet {
     // initialiser un objet a partir des parametre
     public Object initialize_from_param(HttpServletRequest req, HttpServletResponse res, Class<?> objet_param)
             throws NumberFormatException, IllegalArgumentException, IllegalAccessException, InstantiationException,
-            IOException, InvalidParameterException {
+            IOException, InvalidParameterException, ParameterRequiredExceptionN {
         Field[] liste_field = objet_param.getDeclaredFields();
         Object objet = objet_param.newInstance();
 
+        List<ParameterRequiredException> liste_erreur = new ArrayList<>();
+
         for (Field field : liste_field) {
             field.setAccessible(true);
-            if (field.getType() == int.class) {
-                field.set(objet, Integer.parseInt(req.getParameter(field.getName())));
-            } else if (field.getType() == String.class) {
-                field.set(objet, req.getParameter(field.getName()));
+            String param_value = req.getParameter(field.getName());
+
+            if (field.isAnnotationPresent(Required.class) && (param_value == null)) {
+                liste_erreur.add(new ParameterRequiredException("parameter"));
             } else {
-                throw new InvalidParameterException("le parametre inserer doit etre de type string ou int");
+                // initializer les parametre integer
+                if (field.getType() == int.class) {
+                    field.set(objet, Integer.parseInt(param_value));
+                }
+                // initializer les valeurs double
+                else if (field.getType() == double.class) {
+                    field.set(objet, Double.parseDouble(param_value));
+                }
+                // initializer les parametre string
+                else if (field.getType() == String.class) {
+                    field.set(objet, req.getParameter(param_value));
+                } else {
+                    throw new InvalidParameterException("le parametre inserer doit etre de type string ou int");
+                }
             }
+
         }
+
+        if (liste_erreur.size() > 0) {
+            throw new ParameterRequiredException("error");
+        }
+
         return objet;
     }
 
