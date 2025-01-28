@@ -19,12 +19,14 @@ import com.google.gson.Gson;
 import annotation.Get;
 import annotation.Post;
 import annotation.RequestBody;
+import annotation.Required;
 import annotation.URL;
 import exception.ControllerFolderNotFoundException;
 import exception.DuplicateUrlException;
 import exception.InvalidParameterException;
 import exception.InvalideFunctionRetourException;
 import exception.NoSuchUrlExcpetion;
+import exception.ParameterRequiredException;
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletConfig;
 import jakarta.servlet.ServletException;
@@ -40,21 +42,22 @@ import util.ModelView;
 import util.Session;
 
 @MultipartConfig(fileSizeThreshold = 1024 * 1024, maxFileSize = 1024 * 1024 * 10, maxRequestSize = 1024 * 1024 * 20)
-// @WebServlet(urlPatterns = "/*", name = "monservlet")
 public class FrontServlet extends HttpServlet {
+
     List<String> liste_controller;
     HashMap<String, Mapping[]> mon_map;
     Exception error = null;
     List<String> liste_nom = new ArrayList<>();
     Class<?> method_appeler;
     int status = 200;
+    // ModelView previewsModelView;
 
     // intialization du servlet
     @SuppressWarnings("unchecked")
     public void init(ServletConfig config) throws ServletException {
         super.init(config);
         liste_controller = new ArrayList<>();
-        mon_map = new HashMap<>();
+        mon_map = new HashMap<>(); // contient tous les method avec leur controller
 
         // maka ny fonction si class annoter rehetra
         String context_Valeur = getServletConfig().getInitParameter("controller");
@@ -109,6 +112,15 @@ public class FrontServlet extends HttpServlet {
             } catch (NoSuchUrlExcpetion e) {
                 erreur(out, 2, e);
                 response.setStatus(404);
+            } catch (ParameterRequiredException e) {
+
+                response.setContentType("text/html");
+                try {
+                    response.getWriter().print(e.afficherHTMLRedirectToError());
+                } catch (Exception err) {
+                    e.printStackTrace(out);
+                }
+
             } catch (Exception e) {
                 response.setStatus(500);
                 out.println("misy erreur le izy:" + e.getMessage());
@@ -180,7 +192,7 @@ public class FrontServlet extends HttpServlet {
 
                         // invoquer l'objet et prendre sa valeur de retour
                         Object retour = m.invoke(objet,
-                                get_request_param(req, res, mp.getArgument()));
+                                get_request_param(req, res, mp.getArgument(), m));
 
                         // dans le cas ou le retour de la method est une string
                         if (retour.getClass() == String.class) {
@@ -328,7 +340,7 @@ public class FrontServlet extends HttpServlet {
 
     // fonction pour prendre tous les valeurs dans la requette
     public Object[] get_request_param(HttpServletRequest request, HttpServletResponse response,
-            HashMap<String, Class<?>> liste_objet)
+            HashMap<String, Class<?>> liste_objet, Method method)
             throws IOException, NumberFormatException, IllegalArgumentException, IllegalAccessException, Exception {
         Object[] objet = new Object[liste_objet.size()];
         int i = 0;
@@ -341,19 +353,25 @@ public class FrontServlet extends HttpServlet {
                 } catch (Exception e) {
                     objet[i] = "null";
                 }
-            } else if (entry.getValue() == int.class) {
+            }
+            // initaliser la valeur integer du parametre
+            else if (entry.getValue() == int.class) {
                 try {
                     objet[i] = Integer.parseInt(request.getParameter(entry.getKey()));
                 } catch (Exception e) {
                     objet[i] = "null";
                 }
-            } else if (entry.getValue() == double.class) {
+            }
+            // initialiser la valeur double
+            else if (entry.getValue() == double.class) {
                 try {
                     objet[i] = Double.parseDouble(request.getParameter(entry.getKey()));
                 } catch (Exception e) {
                     objet[i] = "null";
                 }
-            } else if (entry.getValue() == FilePart.class) {
+            }
+            // intitialiser une valeur filepart
+            else if (entry.getValue() == FilePart.class) {
                 try {
                     Part filepart = request.getPart(entry.getKey());
                     String filename = filepart.getSubmittedFileName();
@@ -379,7 +397,7 @@ public class FrontServlet extends HttpServlet {
             else {
                 Class<?> objet_param = entry.getValue();
                 try {
-                    objet[i] = initialize_from_param(request, response, objet_param);
+                    objet[i] = initialize_from_param(request, response, objet_param, method);
                 } catch (Exception e) {
                     response.getWriter().println("misy erreur le initialize from param");
                     throw e;
@@ -392,22 +410,55 @@ public class FrontServlet extends HttpServlet {
     }
 
     // initialiser un objet a partir des parametre
-    public Object initialize_from_param(HttpServletRequest req, HttpServletResponse res, Class<?> objet_param)
+    public Object initialize_from_param(HttpServletRequest req, HttpServletResponse res, Class<?> objet_param,
+            Method metod)
             throws NumberFormatException, IllegalArgumentException, IllegalAccessException, InstantiationException,
-            IOException, InvalidParameterException {
+            IOException, InvalidParameterException, ParameterRequiredException, NoSuchFieldException,
+            SecurityException {
         Field[] liste_field = objet_param.getDeclaredFields();
         Object objet = objet_param.newInstance();
 
+        // JFrame f = new JFrame();
+
+        boolean issetError = false;
+
         for (Field field : liste_field) {
             field.setAccessible(true);
-            if (field.getType() == int.class) {
-                field.set(objet, Integer.parseInt(req.getParameter(field.getName())));
-            } else if (field.getType() == String.class) {
-                field.set(objet, req.getParameter(field.getName()));
+            String param_value = req.getParameter(field.getName());
+
+            // JOptionPane.showMessageDialog(f, "field name = " + field.getName() + " et
+            // parm value " + param_value,
+            // "message", 1);
+
+            if (field.isAnnotationPresent(Required.class) && ((param_value == null) || param_value.isEmpty())) {
+                issetError = true;
+                // JOptionPane.showMessageDialog(f, "isset error", "message", 1);
             } else {
-                throw new InvalidParameterException("le parametre inserer doit etre de type string ou int");
+                // initializer les parametre integer
+                if (field.getType() == int.class) {
+                    field.set(objet, Integer.parseInt(param_value));
+                }
+                // initializer les valeurs double
+                else if (field.getType() == double.class) {
+                    field.set(objet, Double.parseDouble(param_value));
+                }
+                // initializer les parametre string
+                else if (field.getType() == String.class) {
+                    field.set(objet, param_value);
+                } else {
+                    throw new InvalidParameterException("le parametre inserer doit etre de type string ou int");
+                }
             }
+
         }
+
+        if (issetError) {
+            throw new ParameterRequiredException(liste_field, objet, metod);
+        }
+
+        // String nom = (String) objet.getClass().getDeclaredField("nom").get(objet);
+        // JOptionPane.showMessageDialog(f, "param value =" + nom, "message", 1);
+
         return objet;
     }
 

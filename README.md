@@ -1,32 +1,41 @@
 # sprint 6
-  *fonctionalite*
-    **mandefa donner amin'ny page hafa**
-    1-mcreer fonction maka ny attribut rehetra an'ilay fonction efa mape 
-    2-maka ny donner eo amin'ny url manana an'ny nom an'le requette mappe
-    3-minvoke an'le fonction miaraka amin'ny ilay donner avy any amin'ny url
-      
-# fonctionalite sprint 7 
-  *mettre en argument d'une fonction une objet*
 
+_fonctionalite_
+**mandefa donner amin'ny page hafa**
+1-mcreer fonction maka ny attribut rehetra an'ilay fonction efa mape
+2-maka ny donner eo amin'ny url manana an'ny nom an'le requette mappe
+3-minvoke an'le fonction miaraka amin'ny ilay donner avy any amin'ny url
+
+# fonctionalite sprint 7
+
+_mettre en argument d'une fonction une objet_
 
 # sprint 8 manisy session
 
-
 # sprint 9 :
-  *avedika json ny type de retourin'ny le fonction arakarakin'ny annotation .*i
 
+*avedika json ny type de retourin'ny le fonction arakarakin'ny annotation .*i
 
-# sprint 10 
-  *mcreer verb amin'ny le izy ohatra hoe post sy get *
+# sprint 10
 
+_mcreer verb amin'ny le izy ohatra hoe post sy get _
 
 # sprint 11
- * generer une etat de la page par exemple etat : 404(not found ) , 200 (success),500 internal serveur error.
 
+- generer une etat de la page par exemple etat : 404(not found ) , 200 (success),500 internal serveur error.
 
 # sprint12
-  * creer une fonctionnalite de import de fichier *
 
+- creer une fonctionnalite de import de fichier \*
 
-# spring 13 
-  * creer une fonctionnalite de validation de formulaire* 
+# spring 13
+
+- creer une fonctionnalite de validation de formulaire\*
+
+# sprint 14
+
+- retourner l'erreur dans le formulaire
+
+# sprint 15
+
+- faire une fonctionnalite d'authentifaction protection des fonction par utilisateur
