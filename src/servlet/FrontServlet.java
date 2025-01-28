@@ -42,14 +42,15 @@ import util.ModelView;
 import util.Session;
 
 @MultipartConfig(fileSizeThreshold = 1024 * 1024, maxFileSize = 1024 * 1024 * 10, maxRequestSize = 1024 * 1024 * 20)
-// @WebServlet(urlPatterns = "/*", name = "monservlet")
 public class FrontServlet extends HttpServlet {
+
     List<String> liste_controller;
     HashMap<String, Mapping[]> mon_map;
     Exception error = null;
     List<String> liste_nom = new ArrayList<>();
     Class<?> method_appeler;
     int status = 200;
+    // ModelView previewsModelView;
 
     // intialization du servlet
     @SuppressWarnings("unchecked")
@@ -114,17 +115,11 @@ public class FrontServlet extends HttpServlet {
             } catch (ParameterRequiredException e) {
 
                 response.setContentType("text/html");
-                out.println("<html>");
-                out.println("<head></head>");
-                out.println("<body>");
-                out.println("<script>");
-                // Field[] liste_field = e.getListe_field();
-                // for (Field f : liste_field) {
-                // out.println("localStorage.setItem('f.getName()',"+f.get()+")");
-                // }
-                out.println("history.back();</script>");
-                out.println("</body>");
-                out.println("</html>");
+                try {
+                    response.getWriter().print(e.afficherHTMLRedirectToError());
+                } catch (Exception err) {
+                    e.printStackTrace(out);
+                }
 
             } catch (Exception e) {
                 response.setStatus(500);
@@ -197,7 +192,7 @@ public class FrontServlet extends HttpServlet {
 
                         // invoquer l'objet et prendre sa valeur de retour
                         Object retour = m.invoke(objet,
-                                get_request_param(req, res, mp.getArgument()));
+                                get_request_param(req, res, mp.getArgument(), m));
 
                         // dans le cas ou le retour de la method est une string
                         if (retour.getClass() == String.class) {
@@ -345,7 +340,7 @@ public class FrontServlet extends HttpServlet {
 
     // fonction pour prendre tous les valeurs dans la requette
     public Object[] get_request_param(HttpServletRequest request, HttpServletResponse response,
-            HashMap<String, Class<?>> liste_objet)
+            HashMap<String, Class<?>> liste_objet, Method method)
             throws IOException, NumberFormatException, IllegalArgumentException, IllegalAccessException, Exception {
         Object[] objet = new Object[liste_objet.size()];
         int i = 0;
@@ -402,7 +397,7 @@ public class FrontServlet extends HttpServlet {
             else {
                 Class<?> objet_param = entry.getValue();
                 try {
-                    objet[i] = initialize_from_param(request, response, objet_param);
+                    objet[i] = initialize_from_param(request, response, objet_param, method);
                 } catch (Exception e) {
                     response.getWriter().println("misy erreur le initialize from param");
                     throw e;
@@ -415,7 +410,8 @@ public class FrontServlet extends HttpServlet {
     }
 
     // initialiser un objet a partir des parametre
-    public Object initialize_from_param(HttpServletRequest req, HttpServletResponse res, Class<?> objet_param)
+    public Object initialize_from_param(HttpServletRequest req, HttpServletResponse res, Class<?> objet_param,
+            Method metod)
             throws NumberFormatException, IllegalArgumentException, IllegalAccessException, InstantiationException,
             IOException, InvalidParameterException, ParameterRequiredException, NoSuchFieldException,
             SecurityException {
@@ -457,7 +453,7 @@ public class FrontServlet extends HttpServlet {
         }
 
         if (issetError) {
-            throw new ParameterRequiredException(liste_field);
+            throw new ParameterRequiredException(liste_field, objet, metod);
         }
 
         // String nom = (String) objet.getClass().getDeclaredField("nom").get(objet);
