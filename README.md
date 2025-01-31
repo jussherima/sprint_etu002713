@@ -39,3 +39,8 @@ _mcreer verb amin'ny le izy ohatra hoe post sy get _
 # sprint 15
 
 - faire une fonctionnalite d'authentifaction protection des fonction par utilisateur stocker les utilisateur dans un session et si l'utilisateur est authentifier on peut l'utiliser
+
+# sprint 16
+
+- faire une protection des class en utilisant des authentification pour la class avant d'utiliser tous les fonction dans la class (class du controller)
+  -asiana hoe public ao anatin'ilay controller raha ohatra ka tiana hoe accessible public ilay fonction ao anatin'ilay controller proteger
