@@ -190,6 +190,8 @@ public class FrontServlet extends HttpServlet {
 
                     // verifier l'authentification
                     boolean userEstAuth = false;
+
+                    // verification si l'utilisateur a les assez d'autorisation
                     if (m.isAnnotationPresent(Secured.class)) {
                         Secured secured = m.getAnnotation(Secured.class);
                         UserInterface user = null;
