@@ -1,5 +1,6 @@
 package util;
 
+import authentification.UserInterface;
 import jakarta.servlet.http.HttpSession;
 
 public class Session {
@@ -19,5 +20,9 @@ public class Session {
 
     public Object get(String name) {
         return sess.getAttribute(name);
+    }
+
+    public void logUser(UserInterface user) {
+        add("utilisateur_logged", user);
     }
 }
