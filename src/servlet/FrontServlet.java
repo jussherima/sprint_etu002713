@@ -21,9 +21,11 @@ import com.google.gson.Gson;
 
 import annotation.Get;
 import annotation.Post;
+import annotation.Public;
 import annotation.RequestBody;
 import annotation.Required;
 import annotation.Secured;
+import annotation.SecuredController;
 import annotation.URL;
 import authentification.UserInterface;
 import exception.ControllerFolderNotFoundException;
@@ -191,27 +193,55 @@ public class FrontServlet extends HttpServlet {
                     // verifier l'authentification
                     boolean userEstAuth = false;
 
-                    // verification si l'utilisateur a les assez d'autorisation
-                    if (m.isAnnotationPresent(Secured.class)) {
-                        Secured secured = m.getAnnotation(Secured.class);
-                        UserInterface user = null;
-                        try {
-                            user = (UserInterface) req.getSession().getAttribute("utilisateur_logged");
-                            if (user != null) {
-                                if (secured.role().isEmpty()) {
-                                    userEstAuth = true;
-                                } else if (!secured.role().isEmpty()) {
+                    UserInterface user = null;
 
-                                    if (user.getRole().equals(secured.role())) {
+                    // verifier l'authorization a partir de l'annotation de la class
+                    if (clazz.isAnnotationPresent(SecuredController.class)) {
+                        SecuredController secured = clazz.getAnnotation(SecuredController.class);
+                        if (!m.isAnnotationPresent(Public.class)) {
+                            // JOptionPane.showMessageDialog(new JFrame(), "tsy nandalo " + m.getName() + "
+                            // ");
+                            try {
+                                user = (UserInterface) req.getSession().getAttribute("utilisateur_logged");
+                                if (user != null) {
+                                    if (secured.role().isEmpty()) {
                                         userEstAuth = true;
+                                    } else if (!secured.role().isEmpty()) {
+                                        if (user.getRole().equals(secured.role())) {
+                                            userEstAuth = true;
+                                        }
                                     }
                                 }
-                            }
-                        } catch (Exception e) {
+                            } catch (Exception e) {
 
+                            }
+                        } else {
+                            // JOptionPane.showMessageDialog(new JFrame(), "io misy annote public");
+                            userEstAuth = true;
                         }
                     } else {
-                        userEstAuth = true;
+                        // verification si l'utilisateur a les assez d'autorisation
+                        if (m.isAnnotationPresent(Secured.class)) {
+                            Secured secured = m.getAnnotation(Secured.class);
+
+                            try {
+                                user = (UserInterface) req.getSession().getAttribute("utilisateur_logged");
+                                if (user != null) {
+                                    if (secured.role().isEmpty()) {
+                                        userEstAuth = true;
+                                    } else if (!secured.role().isEmpty()) {
+
+                                        if (user.getRole().equals(secured.role())) {
+                                            userEstAuth = true;
+                                        }
+                                    }
+                                }
+                            } catch (Exception e) {
+
+                            }
+                        } else {
+                            userEstAuth = true;
+                        }
                     }
 
                     if (userEstAuth) {
