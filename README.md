@@ -38,4 +38,4 @@ _mcreer verb amin'ny le izy ohatra hoe post sy get _
 
 # sprint 15
 
-- faire une fonctionnalite d'authentifaction protection des fonction par utilisateur
+- faire une fonctionnalite d'authentifaction protection des fonction par utilisateur stocker les utilisateur dans un session et si l'utilisateur est authentifier on peut l'utiliser

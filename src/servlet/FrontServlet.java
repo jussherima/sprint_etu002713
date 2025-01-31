@@ -14,19 +14,25 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.swing.JFrame;
+import javax.swing.JOptionPane;
+
 import com.google.gson.Gson;
 
 import annotation.Get;
 import annotation.Post;
 import annotation.RequestBody;
 import annotation.Required;
+import annotation.Secured;
 import annotation.URL;
+import authentification.UserInterface;
 import exception.ControllerFolderNotFoundException;
 import exception.DuplicateUrlException;
 import exception.InvalidParameterException;
 import exception.InvalideFunctionRetourException;
 import exception.NoSuchUrlExcpetion;
 import exception.ParameterRequiredException;
+import exception.SecuredMethodException;
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletConfig;
 import jakarta.servlet.ServletException;
@@ -50,7 +56,6 @@ public class FrontServlet extends HttpServlet {
     List<String> liste_nom = new ArrayList<>();
     Class<?> method_appeler;
     int status = 200;
-    // ModelView previewsModelView;
 
     // intialization du servlet
     @SuppressWarnings("unchecked")
@@ -121,6 +126,9 @@ public class FrontServlet extends HttpServlet {
                     e.printStackTrace(out);
                 }
 
+            } catch (SecuredMethodException e) {
+                // out.println("misy erreur le izy:" + e.getMessage());
+                out.println(e.getMessage());
             } catch (Exception e) {
                 response.setStatus(500);
                 out.println("misy erreur le izy:" + e.getMessage());
@@ -180,41 +188,70 @@ public class FrontServlet extends HttpServlet {
                                         + mp.method_param()[0].getName());
                     }
 
-                    @SuppressWarnings("deprecation")
+                    // verifier l'authentification
+                    boolean userEstAuth = false;
+                    if (m.isAnnotationPresent(Secured.class)) {
+                        Secured secured = m.getAnnotation(Secured.class);
+                        UserInterface user = null;
+                        try {
+                            user = (UserInterface) req.getSession().getAttribute("utilisateur_logged");
+                            if (user != null) {
+                                if (secured.role().isEmpty()) {
+                                    userEstAuth = true;
+                                } else if (!secured.role().isEmpty()) {
 
-                    // minstancer an'le session ao anaty objet
-                    Object objet = clazz.newInstance();
-                    initialize_session(objet, req);
+                                    if (user.getRole().equals(secured.role())) {
+                                        userEstAuth = true;
+                                    }
+                                }
+                            }
+                        } catch (Exception e) {
 
-                    // verifier si le method est bien annoter selon le verb(ex:post ou get) que l'on
-                    // cherche
-                    if (m.isAnnotationPresent((Class<? extends Annotation>) method_appeler)) {
-
-                        // invoquer l'objet et prendre sa valeur de retour
-                        Object retour = m.invoke(objet,
-                                get_request_param(req, res, mp.getArgument(), m));
-
-                        // dans le cas ou le retour de la method est une string
-                        if (retour.getClass() == String.class) {
-                            noerror = true;
-                            res.getWriter().println((String) retour);
                         }
-                        // dans le cas ou notre retour est une ModelView
-                        else if (retour.getClass() == ModelView.class) {
-                            res.getWriter().println("l'instance de la class est une view");
-                            noerror = true;
-                            trait_view(req, res, (ModelView) retour);
-                        }
-                        // dans le cas ou on veut faire des rest api
-                        else {
-                            res.setContentType("application/json");
-                            Gson gson = new Gson();
-                            String retour_json = gson.toJson(retour);
-                            noerror = true;
-                            res.getWriter().println(retour_json);
-                        }
-                        break;
+                    } else {
+                        userEstAuth = true;
                     }
+
+                    if (userEstAuth) {
+                        // minstancer an'le session ao anaty objet
+                        @SuppressWarnings("deprecation")
+                        Object objet = clazz.newInstance();
+                        initialize_session(objet, req);
+
+                        // verifier si le method est bien annoter selon le verb(ex:post ou get) que l'on
+                        // cherche
+                        if (m.isAnnotationPresent((Class<? extends Annotation>) method_appeler)) {
+
+                            // invoquer l'objet et prendre sa valeur de retour
+                            Object retour = m.invoke(objet,
+                                    get_request_param(req, res, mp.getArgument(), m));
+
+                            // dans le cas ou le retour de la method est une string
+                            if (retour.getClass() == String.class) {
+                                noerror = true;
+                                res.getWriter().println((String) retour);
+                            }
+                            // dans le cas ou notre retour est une ModelView
+                            else if (retour.getClass() == ModelView.class) {
+                                res.getWriter().println("l'instance de la class est une view");
+                                noerror = true;
+                                trait_view(req, res, (ModelView) retour);
+                            }
+                            // dans le cas ou on veut faire des rest api
+                            else {
+                                res.setContentType("application/json");
+                                Gson gson = new Gson();
+                                String retour_json = gson.toJson(retour);
+                                noerror = true;
+                                res.getWriter().println(retour_json);
+                            }
+                            break;
+                        }
+                    } else {
+                        throw new SecuredMethodException(m,
+                                "this method is protected you must be logged before using this method");
+                    }
+
                 }
             }
 
